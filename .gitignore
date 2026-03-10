@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 node_modules/
 dist/
 *.log
 .env
 .DS_Store
+=======
+.aider*
+>>>>>>> aea22fe0c32c38b7c795cb41519247a46771b879

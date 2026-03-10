@@ -3,10 +3,23 @@
     <header class="header">
       <h1>Visual Readactor</h1>
       <div class="actions">
+        <button @click="showImageUploader = true" class="btn btn-image">
+          🖼️ Из макета
+        </button>
         <button @click="exportHtml" class="btn btn-primary">Экспорт HTML</button>
         <button @click="exportCss" class="btn btn-secondary">Экспорт CSS</button>
       </div>
     </header>
+
+    <!-- Модальное окно загрузчика изображений -->
+    <div v-if="showImageUploader" class="modal-overlay" @click.self="showImageUploader = false">
+      <div class="modal-content">
+        <ImageUploader 
+          @analyzed="handleAnalyzed" 
+          @close="showImageUploader = false" 
+        />
+      </div>
+    </div>
 
     <div class="main-container">
       <!-- Панель редакторов -->
@@ -60,6 +73,9 @@
             <option value="tablet">Tablet (768px)</option>
             <option value="mobile">Mobile (375px)</option>
           </select>
+          <button @click="autoResize" class="btn btn-auto" title="Автоматически сгенерировать CSS для выбранного брейкпоинта">
+            🚀 Автовёрстка
+          </button>
         </div>
         
         <div 
@@ -189,28 +205,318 @@
 </template>
 
 <script>
+import { appendGeneratedCss } from './utils/cssGenerator.js';
+import ImageUploader from './components/ImageUploader.vue';
+
 export default {
   name: 'App',
+  components: { ImageUploader },
   data() {
     return {
-      htmlCode: `<div class="wrapp">
-  <div class="wrapp_inner">
-    <h1>Привет, мир!</h1>
-    <p>Это пример контента.</p>
+      htmlCode: `<div class="brands-slider">
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-lada.png" alt="LADA">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 15 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">124 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
+  </div>
+  
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-kia.png" alt="KIA">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 15 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">263 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
+  </div>
+  
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-jeep.png" alt="Jeep">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 20 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">172 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
+  </div>
+  
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-nissan.png" alt="Nissan">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 20 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">234 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
+  </div>
+  
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-bmw.png" alt="BMW">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 20 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">180 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
+  </div>
+  
+  <div class="brand-card">
+    <div class="brand-logo">
+      <img src="logo-subaru.png" alt="Subaru">
+    </div>
+    <div class="brand-price">
+      <span class="price-label">Стоимость:</span>
+      <span class="price-value">ОТ 20 000 ₽</span>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-stats">
+      <span class="stats-label">Отремонтировано:</span>
+      <span class="stats-value">231 АВТО</span>
+    </div>
+    <button class="brand-button">ЗАКАЗАТЬ</button>
   </div>
 </div>`,
-      cssCode: `.wrapp {
-  max-width: 1200px;
-  margin: 0 auto;
+      cssCode: `/* Контейнер слайдера */
+.brands-slider {
+  display: flex;
+  gap: 16px;
   padding: 20px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
-.wrapp_inner {
-  max-width: 100%;
+/* Скрытие скроллбара для красоты */
+.brands-slider::-webkit-scrollbar {
+  height: 8px;
+}
+
+.brands-slider::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.brands-slider::-webkit-scrollbar-thumb {
+  background: #d97706;
+  border-radius: 4px;
+}
+
+.brands-slider::-webkit-scrollbar-thumb:hover {
+  background: #b45309;
+}
+
+/* Карточка бренда */
+.brand-card {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.brand-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Логотип */
+.brand-logo {
   width: 100%;
-  padding: 15px;
-  background: #f5f5f5;
-}`,
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.brand-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Цена */
+.brand-price {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.price-label {
+  display: block;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.price-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #d97706;
+  letter-spacing: 0.5px;
+}
+
+/* Разделитель */
+.brand-divider {
+  width: 100%;
+  height: 1px;
+  background: #e5e7eb;
+  margin: 12px 0;
+}
+
+/* Статистика */
+.brand-stats {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.stats-label {
+  display: block;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.stats-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: 0.5px;
+}
+
+/* Кнопка */
+.brand-button {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.brand-button:hover {
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.brand-button:active {
+  transform: translateY(0);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+  .brands-slider {
+    padding: 12px;
+    gap: 12px;
+  }
+  
+  .brand-card {
+    flex: 0 0 160px;
+    padding: 16px 12px;
+  }
+  
+  .brand-logo {
+    height: 50px;
+    margin-bottom: 12px;
+  }
+  
+  .price-value {
+    font-size: 16px;
+  }
+  
+  .stats-value {
+    font-size: 18px;
+  }
+  
+  .brand-button {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 375px) {
+  .brands-slider {
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .brand-card {
+    flex: 0 0 140px;
+    padding: 14px 10px;
+  }
+  
+  .brand-logo {
+    height: 40px;
+    margin-bottom: 10px;
+  }
+  
+  .price-label,
+  .stats-label {
+    font-size: 11px;
+  }
+  
+  .price-value {
+    font-size: 14px;
+  }
+  
+  .stats-value {
+    font-size: 16px;
+  }
+  
+  .brand-button {
+    padding: 10px 12px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+}
+`,
       showHtmlEditor: true,
       showCssEditor: true,
       previewContent: '',
@@ -228,7 +534,8 @@ export default {
         lineHeight: '',
         color: '',
         backgroundColor: ''
-      }
+      },
+      showImageUploader: false
     }
   },
   computed: {
@@ -244,11 +551,36 @@ export default {
   },
   methods: {
     updatePreview() {
+      const baseStyles = `
+        * {
+          box-sizing: border-box;
+          min-width: 0;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          overflow-x: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        img, video, iframe, svg, canvas {
+          max-width: 100%;
+          height: auto;
+        }
+        p, h1, h2, h3, h4, h5, h6, span, a, li, td, th, div {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          max-width: 100%;
+        }
+      `;
+      
       const content = `
 <!DOCTYPE html>
 <html>
 <head>
-  <style>${this.cssCode}</style>
+  <style>
+    ${baseStyles}
+    ${this.cssCode}
+  </style>
 </head>
 <body>
   ${this.htmlCode}
@@ -366,6 +698,21 @@ export default {
       a.download = 'styles.css'
       a.click()
       URL.revokeObjectURL(url)
+    },
+    autoResize() {
+      // Генерируем CSS для текущего брейкпоинта
+      const newCss = appendGeneratedCss(this.cssCode, this.currentBreakpoint, this.htmlCode);
+
+      if (newCss !== this.cssCode) {
+        this.cssCode = newCss;
+        this.updatePreview();
+      }
+    },
+    handleAnalyzed({ html, css }) {
+      // Применяем сгенерированный код
+      this.htmlCode = html;
+      this.cssCode = css;
+      this.updatePreview();
     }
   }
 }
@@ -445,6 +792,68 @@ body {
 
 .btn-block:hover {
   background: #505050;
+}
+
+.btn-auto {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-auto:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-auto:active {
+  transform: translateY(0);
+}
+
+.btn-image {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 8px 16px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-right: 10px;
+}
+
+.btn-image:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  overflow: auto;
+}
+
+.modal-content {
+  background: #2d2d2d;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
 .main-container {
@@ -556,7 +965,11 @@ body {
   overflow: auto;
   margin: 0 auto;
   width: 100%;
+  min-width: 0; /* Предотвращает растягивание контейнера */
   transition: max-width 0.3s;
+  /* Гарантируем что контент не выходит за рамки */
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-frame {
@@ -564,6 +977,9 @@ body {
   height: 100%;
   border: none;
   min-height: 500px;
+  /* Важно: предотвращаем минимальную ширину по содержимому */
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .properties-panel {
